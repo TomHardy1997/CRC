@@ -31,8 +31,8 @@ transform = transforms.Compose([
 resnet = CustomNet(num_classes=9, pretrained=True)
 
 # 3. 定义训练器和评估器
-device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
-# resnet = DataParallel(resnet)  # 使用 DataParallel 在多个 GPU 上并行训练
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+resnet = DataParallel(resnet)  # 使用 DataParallel 在多个 GPU 上并行训练
 resnet.to(device)  # 将模型移动到 GPU 上
 optimizer = optim.Adam(resnet.parameters(), lr=0.001, weight_decay=1e-4)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
@@ -56,14 +56,14 @@ for train_idx, val_idx in kf.split(train_df):
 
     train_dataset = CustomDataset(train_fold_df, transform=transform)
     val_dataset = CustomDataset(val_fold_df, transform=transform)
-    train_loader = DataLoader(train_dataset, batch_size=135, shuffle=True, num_workers=0)
-    val_loader = DataLoader(val_dataset, batch_size=135, shuffle=False, num_workers=0)
+    train_loader = DataLoader(train_dataset, batch_size=135, shuffle=False, num_workers=0, sampler=train_dataset.sampler)
+    val_loader = DataLoader(val_dataset, batch_size=135, shuffle=False, num_workers=0, sampler=val_dataset.sampler)
 
     train_loader = tqdm(train_loader, desc=f'Fold {fold} Training')
     val_loader = tqdm(val_loader, desc=f'Fold {fold} Validation')
 
     # 训练模型
-    num_epochs = 50
+    num_epochs = 20
     best_auc = 0.0
     best_val_accuracy = 0.0
 
@@ -115,7 +115,7 @@ for train_idx, val_idx in kf.split(train_df):
         all_labels = np.concatenate(all_labels)
         auc = roc_auc_score(all_labels, all_probs, multi_class='ovr', average='macro')
 
-        print(f'Fold {fold}, Epoch {epoch+1}/{num_epochs}, Loss: {running_loss/len(train_loader)}, Train Acc: {train_accuracy}, Val Acc: {val_accuracy}, AUC: {auc}')
+        print(f'Fold {fold}, Epoch {epoch+1}/{num_epochs}, Loss: {round(running_loss/len(train_loader),4)}, Train Acc: {round(train_accuracy,4)}, Val Acc: {round(val_accuracy,4)}, AUC: {round(auc,4)}')
 
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
@@ -154,7 +154,7 @@ for train_idx, val_idx in kf.split(train_df):
     all_test_labels = np.concatenate(all_test_labels)
     test_auc = roc_auc_score(all_test_labels, all_test_probs, multi_class='ovr', average='macro')
 
-    print(f'Fold {fold}, Test Acc: {test_accuracy}, Test AUC: {test_auc}')
+    print(f'Fold {fold}, Test Acc: {round(test_accuracy,4)}, Test AUC: {round(test_auc, 4)}')
 
     # 记录测试集结果
     results[fold - 1]['test_accuracy'] = test_accuracy
@@ -162,7 +162,7 @@ for train_idx, val_idx in kf.split(train_df):
 
 # 将结果输出到 CSV 文件
 results_df = pd.DataFrame(results)
-results_df.to_csv('cross_validation_results.csv', index=False)
+results_df.to_csv('cross_validation_results_sampler.csv', index=False)
 
 # for train_idx, val_idx in kf.split(df):
 #     fold += 1
