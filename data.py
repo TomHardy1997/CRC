@@ -44,14 +44,21 @@ class CustomDataset(torch.utils.data.Dataset):
             image = self.transform(image)
         return image, label
 
+
+
+
+
+
+
 if __name__ == "__main__":
     transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
-    df = pd.read_csv('shuffled_data.csv')
+    df = pd.read_csv('splits/independent_test_set.csv')
     dataset = CustomDataset(df,transform=transform)
-    batch_size = 135
+    batch_size = 13500
     loader = DataLoader(dataset, batch_size=batch_size, sampler=dataset.sampler,num_workers=2)
     import ipdb;ipdb.set_trace()
+
